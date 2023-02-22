@@ -20,8 +20,7 @@ RUN apt update && \
 
 FROM ruby:2.7-slim-bullseye
 ARG USER=debian
-RUN gem install bundler:2.3.10 && \
-    apt update && \
+RUN apt update && \
     apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 libreadline8 libssl1.1 libgdbm-compat4 libyaml-0-2 zlib1g && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
