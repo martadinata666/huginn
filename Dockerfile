@@ -28,8 +28,7 @@ RUN apt update && \
 
 ### Install nginx
 COPY nginx/99nginx /etc/apt/preferences.d/99nginx
-# Fixing runtime Warning: the running version of Bundler (2.1.4) is older than the version that created the lockfile (2.3.10). We suggest you to upgrade to the version that created the lockfile by running `gem install bundler:2.3.10`.
-RUN gem install bundler:2.3.10 && \
+RUN gem install bundler:2.4.7 && \
     apt update && \
     apt install -y --no-install-recommends curl gnupg2 ca-certificates lsb-release debian-archive-keyring && \
     curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null && \
