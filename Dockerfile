@@ -1,16 +1,16 @@
 ### Sensible build
-FROM ruby:2.7-slim-bullseye as tukang
+FROM ruby:3.2-slim-bullseye as tukang
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 COPY ["Gemfile", "Gemfile.lock", "/app/"]
 COPY lib/gemfile_helper.rb /app/lib/
 COPY vendor/gems/ /app/vendor/gems/
 COPY ./ /app/
+#    gem update --system 3.3.20 --no-document && \
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
     zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
-    gem update --system 3.3.20 --no-document && \
     gem update bundler --conservative --no-document && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
@@ -18,7 +18,7 @@ RUN apt update && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile && \
     git init 
 
-FROM ruby:2.7-slim-bullseye
+FROM ruby:3.2-slim-bullseye
 ARG USER=debian
 RUN apt update && \
     apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 libreadline8 libssl1.1 libgdbm-compat4 libyaml-0-2 zlib1g && \
