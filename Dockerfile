@@ -27,9 +27,9 @@ RUN apt update && \
     useradd -u 1000 -U -d /home/$USER -s /bin/bash -p $(echo $USER | openssl passwd -1 -stdin) $USER -m -d /home/$USER
 
 ### Install nginx
+#  gem install bundler:2.4.7 && \
 COPY nginx/99nginx /etc/apt/preferences.d/99nginx
-RUN gem install bundler:2.4.7 && \
-    apt update && \
+RUN apt update && \
     apt install -y --no-install-recommends curl gnupg2 ca-certificates lsb-release debian-archive-keyring && \
     curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null && \
     echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/mainline/debian `lsb_release -cs` nginx" | tee /etc/apt/sources.list.d/nginx.list && \
