@@ -6,7 +6,6 @@ COPY ["Gemfile", "Gemfile.lock", "/app/"]
 COPY lib/gemfile_helper.rb /app/lib/
 COPY vendor/gems/ /app/vendor/gems/
 COPY ./ /app/
-#    gem update --system 3.3.20 --no-document && \
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
     zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
@@ -27,7 +26,6 @@ RUN apt update && \
     useradd -u 1000 -U -d /home/$USER -s /bin/bash -p $(echo $USER | openssl passwd -1 -stdin) $USER -m -d /home/$USER
 
 ### Install nginx
-#  gem install bundler:2.4.7 && \
 COPY nginx/99nginx /etc/apt/preferences.d/99nginx
 RUN apt update && \
     apt install -y --no-install-recommends curl gnupg2 ca-certificates lsb-release debian-archive-keyring && \
