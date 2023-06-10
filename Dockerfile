@@ -1,6 +1,5 @@
 ### Sensible build
-ARG BUILDPLATFORM
-FROM --platform=${BUILDPLATFORM} ruby:3.2-slim-bullseye as assetsgenerator
+FROM --platform=linux/amd64 ruby:3.2-slim-bullseye as assetsgenerator
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 COPY ["Gemfile", "Gemfile.lock", "/app/"]
