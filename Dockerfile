@@ -10,12 +10,13 @@ RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
     zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
-    gem update bundler --conservative --no-document && \
+    git init && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local deployment 'true'&& \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local frozen 'true' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --jobs=$(nproc) --deployment --frozen && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile && \
-    git init 
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile
 
 ### Sensible build
 FROM ruby:3.2-slim-bullseye as geminstall
@@ -29,11 +30,12 @@ RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
     zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
-    gem update bundler --conservative --no-document && \
+    git init && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --jobs=$(nproc) --deployment --frozen && \
-    git init 
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local deployment 'true'&& \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local frozen 'true' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --jobs=$(nproc)
 
 
 FROM ruby:3.2-slim-bullseye
