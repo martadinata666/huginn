@@ -19,8 +19,7 @@ RUN apt update && \
     git init 
 
 ### Sensible build
-ARG BUILDPLATFORM
-FROM --platform=${BUILDPLATFORM} ruby:3.2-slim-bullseye as geminstall
+FROM ruby:3.2-slim-bullseye as geminstall
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 COPY ["Gemfile", "Gemfile.lock", "/app/"]
