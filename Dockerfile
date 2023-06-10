@@ -13,7 +13,7 @@ RUN apt update && \
     gem update bundler --conservative --no-document && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install -j $(nproc) && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --j=$(nproc) --deployment --frozen && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile && \
     git init 
 
@@ -32,7 +32,7 @@ RUN apt update && \
     gem update bundler --conservative --no-document && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install -j $(nproc) && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --j=$(nproc) --deployment --frozen && \
     git init 
 
 
@@ -63,14 +63,12 @@ RUN apt update && \
     chown -R $USER:$USER /var/www/html /run/nginx/nginx.pid /var/cache/nginx/ /var/log/nginx/
 COPY --chown=$USER:$USER nginx/huginn-default.conf /etc/nginx/conf.d/default.conf
 COPY --chown=$USER:$USER nginx/nginx.conf /etc/nginx/nginx.conf
-COPY --chown=$USER:$USER supervisor /home/$USER/supervisor
+COPY --chown=$USER:$USER supervisor /supervisor
 COPY --from=geminstall --chown=$USER:$USER /app /app
 COPY --from=assetsgenerator --chown=$USER:$USER /app/public/assets /app/public/assets
-
 EXPOSE 3000
 USER $USER
 WORKDIR /app
 COPY ["docker/scripts/setup_env", "docker/single-process/scripts/init", "/scripts/"]
-#CMD ["/scripts/init"]
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["supervisord","-c","/home/debian/supervisor/supervisord.conf"]
+CMD ["supervisord","-c","/supervisor/supervisord.conf"]
