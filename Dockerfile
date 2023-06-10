@@ -1,5 +1,6 @@
 ### Sensible build
-FROM ruby:3.2-slim-bullseye as tukang
+ARG BUILDPLATFORM
+FROM --platform=${BUILDPLATFORM} ruby:3.2-slim-bullseye as assetsgenerator
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 COPY ["Gemfile", "Gemfile.lock", "/app/"]
@@ -16,6 +17,26 @@ RUN apt update && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install -j 4 && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile && \
     git init 
+
+### Sensible build
+ARG BUILDPLATFORM
+FROM --platform=${BUILDPLATFORM} ruby:3.2-slim-bullseye as geminstall
+ARG DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+COPY ["Gemfile", "Gemfile.lock", "/app/"]
+COPY lib/gemfile_helper.rb /app/lib/
+COPY vendor/gems/ /app/vendor/gems/
+COPY ./ /app/
+RUN apt update && \
+    apt install -y --no-install-recommends build-essential checkinstall git-core \
+    zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
+    graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
+    gem update bundler --conservative --no-document && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install -j $(nproc)
+    git init 
+
 
 FROM ruby:3.2-slim-bullseye
 ARG USER=debian
@@ -45,7 +66,9 @@ RUN apt update && \
 COPY --chown=$USER:$USER nginx/huginn-default.conf /etc/nginx/conf.d/default.conf
 COPY --chown=$USER:$USER nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --chown=$USER:$USER supervisor /home/$USER/supervisor
-COPY --from=tukang --chown=$USER:$USER /app /app
+COPY --from=geminstall --chown=$USER:$USER /app /app
+COPY --from=assetsgenerator --chown=$USER:$USER /app/public/assets /app/public/assets
+
 EXPOSE 3000
 USER $USER
 WORKDIR /app
