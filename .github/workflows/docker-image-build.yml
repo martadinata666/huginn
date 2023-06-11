@@ -7,7 +7,7 @@ name: Docker Image Build
 
 on:
   push:
-    branches: [ 'develop' ] #rolling build on develop only
+    branches: [ 'develop','sqlite' ] #rolling build on develop only
     tags: 'v*' #tag for specific release v1.0.2,or anytag, start with v
   pull_request:
     branches: [ 'master' ] #build test on main, not pushing
