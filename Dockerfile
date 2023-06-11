@@ -8,15 +8,15 @@ COPY vendor/gems/ /app/vendor/gems/
 COPY ./ /app/
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
-    zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
+    zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev libpq-dev libsqlite3-dev \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
     git init && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local deployment 'true'&& \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local frozen 'true' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --jobs=$(nproc) --deployment --frozen && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production onfig set --local without 'test development' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local deployment 'true'&& \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local frozen 'true' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc) --deployment --frozen && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle exec rake assets:clean assets:precompile
 
 ### Sensible build
 FROM ruby:3.2-slim-bullseye as geminstall
@@ -31,17 +31,17 @@ RUN apt update && \
     zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev libicu-dev \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
     git init && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local path vendor/bundle && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local deployment 'true'&& \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle config set --local frozen 'true' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle install --jobs=$(nproc)
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local without 'test development' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local deployment 'true'&& \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local frozen 'true' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc)
 
 
 FROM ruby:3.2-slim-bullseye
 ARG USER=debian
 RUN apt update && \
-    apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 libreadline8 libssl1.1 libgdbm-compat4 libyaml-0-2 zlib1g && \
+    apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 libreadline8 libssl1.1 libgdbm-compat4 libyaml-0-2 zlib1g libpq5 libsqlite3.0 && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -u 1000 -U -d /home/$USER -s /bin/bash -p $(echo $USER | openssl passwd -1 -stdin) $USER -m -d /home/$USER
