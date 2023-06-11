@@ -133,7 +133,6 @@ gem 'typhoeus', '~> 1.3.1'
 gem 'uglifier', '~> 2.7.2'
 gem 'mysql2', "~> 0.5"
 gem 'pg', '~> 1.1'
-gem 'sqlite3'
 
 group :development do
   gem 'better_errors'
