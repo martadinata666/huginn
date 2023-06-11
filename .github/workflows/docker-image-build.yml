@@ -60,5 +60,5 @@ jobs:
 #          platforms: linux/amd64
           tags: ${{ steps.metaid.outputs.tags }}
           labels: ${{ steps.metaid.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=$GITHUB_REF_NAME
+          cache-to: type=gha,mode=max,scope=$GITHUB_REF_NAME
