@@ -5,6 +5,7 @@ WORKDIR /app
 COPY ["Gemfile", "Gemfile.lock", "/app/"]
 COPY lib/gemfile_helper.rb /app/lib/
 COPY vendor/gems/ /app/vendor/gems/
+COPY .env.example .env
 COPY ./ /app/
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
