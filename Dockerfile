@@ -26,6 +26,7 @@ COPY ["Gemfile", "Gemfile.lock", "/app/"]
 COPY lib/gemfile_helper.rb /app/lib/
 COPY vendor/gems/ /app/vendor/gems/
 COPY ./ /app/
+COPY .env.example .env
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
                                            zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev \
