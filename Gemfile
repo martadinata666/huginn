@@ -131,6 +131,9 @@ gem 'sprockets'
 gem 'terser'
 gem 'typhoeus', '~> 1.3.1'
 gem 'uglifier', '~> 2.7.2'
+gem 'mysql2', "~> 0.5"
+gem 'pg', '~> 1.1'
+gem 'sqlite3'
 
 group :development do
   gem 'better_errors'
@@ -189,26 +192,3 @@ gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw]
 # BSD systems require rb-kqueue for "listen" to avoid polling for changes.
 gem 'rb-kqueue', '>= 0.2', require: /bsd|dragonfly/i === RbConfig::CONFIG['target_os']
 
-on_heroku = ENV['ON_HEROKU'] ||
-  ENV['HEROKU_POSTGRESQL_ROSE_URL'] ||
-  ENV['HEROKU_POSTGRESQL_GOLD_URL'] ||
-  File.read(File.join(File.dirname(__FILE__), 'Procfile')) =~ /intended for Heroku/
-
-ENV['DATABASE_ADAPTER'] ||=
-  if on_heroku
-    'postgresql'
-  else
-    'mysql2'
-  end
-
-if_true(ENV['DATABASE_ADAPTER'].strip == 'postgresql') do
-  gem 'pg', '~> 1.1'
-end
-
-if_true(ENV['DATABASE_ADAPTER'].strip == 'mysql2') do
-  gem 'mysql2', "~> 0.5"
-end
-
-GemfileHelper.parse_each_agent_gem(ENV['ADDITIONAL_GEMS']) do |args|
-  gem *args
-end
