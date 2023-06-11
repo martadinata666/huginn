@@ -37,6 +37,7 @@ RUN apt update && \
 
 
 FROM ruby:3.2-slim-bullseye
+ENV DATABASE_URL=sqlite3:/app/huginn.db
 ARG USER=debian
 RUN apt update && \
     apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 \
@@ -58,10 +59,11 @@ RUN apt update && \
     mkdir -p /var/www/html && \
     mkdir -p /var/cache/nginx && \
     mkdir -p /run/nginx/ && \
+    mkdir -p /data && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log && \
     touch /run/nginx/nginx.pid && \
-    chown -R $USER:$USER /var/www/html /run/nginx/nginx.pid /var/cache/nginx/ /var/log/nginx/
+    chown -R $USER:$USER /var/www/html /run/nginx/nginx.pid /var/cache/nginx/ /var/log/nginx/ /data
 COPY --chown=$USER:$USER nginx/huginn-default.conf /etc/nginx/conf.d/default.conf
 COPY --chown=$USER:$USER nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --chown=$USER:$USER supervisor /supervisor
