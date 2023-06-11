@@ -12,10 +12,10 @@ RUN apt update && \
     graphviz libmariadb-dev libpq-dev libsqlite3-dev locales tzdata shared-mime-info iputils-ping jq && \
     git init && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production onfig set --local without 'test development' && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local without 'test development' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local deployment 'true'&& \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local frozen 'true' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc) --deployment --frozen && \
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc) && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle exec rake assets:clean assets:precompile
 
 ### Sensible build
@@ -39,6 +39,14 @@ RUN apt update && \
 
 
 FROM ruby:3.2-slim-bullseye
+ENV LC_ALL=en_US.UTF-8 \
+    RAILS_ENV=production \
+    USE_GRAPHVIZ_DOT=dot \
+    RAILS_LOG_TO_STDOUT=true \
+    RAILS_SERVE_STATIC_FILES=true \
+    IP="0.0.0.0" PORT=3000 \
+    DATABASE_URL=sqlite3:/data/huginn.db \
+    APP_SECRET_TOKEN=changeme 
 ARG USER=debian
 RUN apt update && \
     apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 \
