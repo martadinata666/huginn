@@ -15,7 +15,6 @@ RUN apt update && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local without 'test development' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local deployment 'true'&& \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local frozen 'true' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc) && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle exec rake assets:clean assets:precompile
 
@@ -35,7 +34,6 @@ RUN apt update && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local without 'test development' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local deployment 'true'&& \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local frozen 'true' && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc)
 
 
