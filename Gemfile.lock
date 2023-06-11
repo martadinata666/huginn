@@ -909,6 +909,7 @@ DEPENDENCIES
   omniauth-tumblr
   omniauth-twitter
   pg (~> 1.1)
+  sqlite3
   puma
   rack-livereload
   rails (~> 6.1.7)
