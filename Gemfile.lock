@@ -909,6 +909,7 @@ DEPENDENCIES
   omniauth-twitter
   pg (~> 1.5, >= 1.5.9)
   pirate_weather_forecast_ruby
+  sqlite3
   puma
   rack-livereload
   rails (~> 7.0.1)
