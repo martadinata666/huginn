@@ -26,6 +26,7 @@ COPY lib/gemfile_helper.rb /app/lib/
 COPY vendor/gems/ /app/vendor/gems/
 COPY ./ /app/
 COPY .env.example .env
+COPY cleanup.sh cleanup.sh
 RUN apt update && \
     apt install -y --no-install-recommends build-essential checkinstall git-core \
                                            zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libreadline-dev libncurses-dev libffi-dev libxml2-dev libxslt-dev curl libcurl4-openssl-dev \
@@ -33,7 +34,8 @@ RUN apt update && \
     git init && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local path vendor/bundle && \
     LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle config set --local without 'test development' && \
-    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc)
+    LC_ALL=en_US.UTF-8 RAILS_ENV=production bundle install --jobs=$(nproc) && \
+    bash cleanup.sh
 
 
 FROM ruby:3.2-slim-bullseye
