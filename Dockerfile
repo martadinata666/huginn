@@ -37,14 +37,6 @@ RUN apt update && \
 
 
 FROM ruby:3.2-slim-bullseye
-ENV LC_ALL=en_US.UTF-8 \
-    RAILS_ENV=production \
-    USE_GRAPHVIZ_DOT=dot \
-    RAILS_LOG_TO_STDOUT=true \
-    RAILS_SERVE_STATIC_FILES=true \
-    IP="0.0.0.0" PORT=3000 \
-    DATABASE_URL=sqlite3:/data/huginn.db \
-    APP_SECRET_TOKEN=changeme 
 ARG USER=debian
 RUN apt update && \
     apt install -y --no-install-recommends libmariadb3 tini supervisor git-core locales shared-mime-info iputils-ping jq libffi7 libxml2 libncurses6 \
