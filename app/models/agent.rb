@@ -4,6 +4,9 @@ require 'utils'
 # be sub-classed for many different purposes.  Agents can emit Events, as well as receive them and react in many different ways.
 # The basic Agent API is detailed on the Huginn wiki: https://github.com/huginn/huginn/wiki/Creating-a-new-agent
 class Agent < ActiveRecord::Base
+  EXECUTION_LOCK_PREFIX = "huginn:agent:execution:".freeze
+  PROPAGATION_LOCK_NAME = "huginn:agent:propagation".freeze
+
   include AssignableTypes
   include MarkdownClassAttributes
   include JsonSerializedField
@@ -45,6 +48,7 @@ class Agent < ActiveRecord::Base
   validates :controllers, owned_by: :user_id
   validates :control_targets, owned_by: :user_id
   validates :scenarios, owned_by: :user_id
+  validate :validate_service_ownership
   validate :validate_schedule
   validate :validate_options
 
@@ -90,6 +94,19 @@ class Agent < ActiveRecord::Base
 
   def short_type
     type.demodulize
+  end
+
+  def self.with_execution_lock(agent_id)
+    with_advisory_lock!("#{EXECUTION_LOCK_PREFIX}#{agent_id}", disable_query_cache: true) do
+      yield find(agent_id)
+    end
+  end
+
+  def with_execution_lock
+    self.class.with_advisory_lock!("#{EXECUTION_LOCK_PREFIX}#{id}", disable_query_cache: true) do
+      reload
+      yield self
+    end
   end
 
   def check
@@ -168,6 +185,12 @@ class Agent < ActiveRecord::Base
   end
 
   def trigger_web_request(request)
+    with_execution_lock do |agent|
+      agent.send(:perform_web_request, request)
+    end
+  end
+
+  private def perform_web_request(request)
     params = request.params.except(:action, :controller, :agent_id, :user_id, :format)
     if respond_to?(:receive_webhook)
       Rails.logger.warn "DEPRECATED: The .receive_webhook method is deprecated, please switch your Agent to use .receive_web_request."
@@ -284,6 +307,12 @@ class Agent < ActiveRecord::Base
 
   attr_accessor :current_event
 
+  def validate_service_ownership
+    return if service.nil? || service.global? || service.user_id == user_id
+
+    errors.add(:service, "must be owned by you")
+  end
+
   def validate_schedule
     unless cannot_be_scheduled?
       errors.add(:schedule, "is not a valid schedule") unless SCHEDULES.include?(schedule.to_s)
@@ -305,6 +334,10 @@ class Agent < ActiveRecord::Base
     else
       nil
     end
+  end
+
+  def option_provided?(option_value)
+    !(option_value != false && option_value.blank?)
   end
 
   def is_positive_integer?(value)
@@ -394,51 +427,48 @@ class Agent < ActiveRecord::Base
       @gem_dependencies_checked && !@gem_dependencies_met
     end
 
-    # Find all Agents that have received Events since the last execution of this method.  Update those Agents with
-    # their new `last_checked_event_id` and queue each of the Agents to be called with #receive using `async_receive`.
+    # Find all Agents in the current scope that have received Events since the last execution of this method.  Update
+    # those Agents with their new `last_checked_event_id` and queue each of them to be called with #receive using
+    # `async_receive`.
     # This is called by bin/schedule.rb periodically.
-    def receive!(options = {})
-      Agent.transaction do
-        scope = Agent
-          .select("agents.id AS receiver_agent_id, sources.type AS source_agent_type, agents.type AS receiver_agent_type, events.id AS event_id")
-          .joins("JOIN links ON (links.receiver_id = agents.id)")
-          .joins("JOIN agents AS sources ON (links.source_id = sources.id)")
-          .joins("JOIN events ON (events.agent_id = sources.id AND events.id > links.event_id_at_creation)")
-          .where("NOT agents.disabled AND NOT agents.deactivated AND (agents.last_checked_event_id IS NULL OR events.id > agents.last_checked_event_id)")
-        if options[:only_receivers].present?
-          scope = scope.where("agents.id in (?)", options[:only_receivers])
-        end
+    def receive!
+      with_advisory_lock!(PROPAGATION_LOCK_NAME, disable_query_cache: true) do
+        Agent.transaction do
+          agents_to_events = Hash.new { |hash, receiver_id| hash[receiver_id] = [] }
 
-        sql = scope.to_sql
+          all
+            .joins("JOIN links ON (links.receiver_id = agents.id)")
+            .joins("JOIN agents AS sources ON (links.source_id = sources.id)")
+            .joins("JOIN events ON (events.agent_id = sources.id AND events.id > links.event_id_at_creation)")
+            .where("NOT agents.disabled AND NOT agents.deactivated AND (agents.last_checked_event_id IS NULL OR events.id > agents.last_checked_event_id)")
+            .pluck("agents.id", "sources.type", "agents.type", "events.id")
+            .each do |receiver_agent_id, source_agent_type, receiver_agent_type, event_id|
+              begin
+                Object.const_get(source_agent_type)
+                Object.const_get(receiver_agent_type)
+              rescue NameError
+                next
+              end
 
-        agents_to_events = {}
-        Agent.connection.select_rows(sql).each do |receiver_agent_id, source_agent_type, receiver_agent_type, event_id|
-          begin
-            Object.const_get(source_agent_type)
-            Object.const_get(receiver_agent_type)
-          rescue NameError
-            next
+              agents_to_events[receiver_agent_id] << event_id
+            end
+
+          Agent.where(id: agents_to_events.keys).each do |agent|
+            event_ids = agents_to_events[agent.id].uniq
+            agent.update_attribute :last_checked_event_id, event_ids.max
+
+            if agent.no_bulk_receive?
+              event_ids.each { |event_id| Agent.async_receive(agent.id, [event_id]) }
+            else
+              Agent.async_receive(agent.id, event_ids)
+            end
           end
 
-          agents_to_events[receiver_agent_id.to_i] ||= []
-          agents_to_events[receiver_agent_id.to_i] << event_id
+          {
+            agent_count: agents_to_events.keys.length,
+            event_count: agents_to_events.values.flatten.uniq.compact.length
+          }
         end
-
-        Agent.where(id: agents_to_events.keys).each do |agent|
-          event_ids = agents_to_events[agent.id].uniq
-          agent.update_attribute :last_checked_event_id, event_ids.max
-
-          if agent.no_bulk_receive?
-            event_ids.each { |event_id| Agent.async_receive(agent.id, [event_id]) }
-          else
-            Agent.async_receive(agent.id, event_ids)
-          end
-        end
-
-        {
-          agent_count: agents_to_events.keys.length,
-          event_count: agents_to_events.values.flatten.uniq.compact.length
-        }
       end
     end
 

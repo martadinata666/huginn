@@ -1,7 +1,46 @@
 require 'rails_helper'
+require 'timeout'
 
 describe Agent do
   it_behaves_like WorkingHelpers
+
+  describe ".with_execution_lock" do
+    it "serializes execution of the same Agent" do
+      agent = agents(:bob_weather_agent)
+      first_entered = Queue.new
+      release_first = Queue.new
+      second_entered = Queue.new
+      holder_connection = Agent.connection_db_config.new_connection
+      holder_connection.pool = Agent.connection_pool
+      lock_name = "#{Agent::EXECUTION_LOCK_PREFIX}#{agent.id}"
+
+      first_thread = Thread.new do
+        holder_connection.with_advisory_lock_if_needed(lock_name, disable_query_cache: true) do
+          first_entered << agent.id
+          release_first.pop
+        end
+      end
+      expect(Timeout.timeout(2) { first_entered.pop }).to eq(agent.id)
+
+      second_thread = Thread.new do
+        Agent.with_execution_lock(agent.id) { |locked_agent| second_entered << locked_agent.id }
+      end
+
+      expect { Timeout.timeout(0.2) { second_entered.pop } }.to raise_error(Timeout::Error)
+      release_first << true
+      expect(Timeout.timeout(2) { second_entered.pop }).to eq(agent.id)
+      [first_thread, second_thread].each(&:value)
+    ensure
+      release_first&.push(true)
+      [first_thread, second_thread].compact.each do |thread|
+        next if thread.join(2)
+
+        thread.kill
+        thread.join
+      end
+      holder_connection&.disconnect!
+    end
+  end
 
   describe '.active/inactive' do
     let(:agent) { agents(:jane_website_agent) }
@@ -287,10 +326,60 @@ describe Agent do
                                                 status: 200)
       end
 
+      it "serializes event selection and enqueueing" do
+        first_entered = Queue.new
+        release_first = Queue.new
+        second_finished = Queue.new
+        holder_connection = Agent.connection_db_config.new_connection
+        holder_connection.pool = Agent.connection_pool
+
+        first_thread = Thread.new do
+          holder_connection.with_advisory_lock_if_needed(Agent::PROPAGATION_LOCK_NAME, disable_query_cache: true) do
+            first_entered << true
+            release_first.pop
+          end
+        end
+        expect(Timeout.timeout(2) { first_entered.pop }).to be(true)
+
+        second_thread = Thread.new do
+          Agent.none.receive!
+          second_finished << true
+        end
+
+        expect { Timeout.timeout(0.2) { second_finished.pop } }.to raise_error(Timeout::Error)
+        release_first << true
+        expect(Timeout.timeout(2) { second_finished.pop }).to be(true)
+        [first_thread, second_thread].each(&:value)
+      ensure
+        release_first&.push(true)
+        [first_thread, second_thread].compact.each do |thread|
+          next if thread.join(2)
+
+          thread.kill
+          thread.join
+        end
+        holder_connection&.disconnect!
+      end
+
       it "should use available events" do
         Agent.async_check(agents(:bob_weather_agent).id)
         expect(Agent).to receive(:async_receive).with(agents(:bob_rain_notifier_agent).id, anything).once
         Agent.receive!
+      end
+
+      it "does not propagate for an empty scope" do
+        Agent.async_check(agents(:bob_weather_agent).id)
+        expect(Agent).not_to receive(:async_receive)
+        expect(Agent.none.receive!).to eq(agent_count: 0, event_count: 0)
+      end
+
+      it "only propagates to receivers in the scope" do
+        Agent.async_check(agents(:bob_weather_agent).id)
+        Agent.async_check(agents(:jane_weather_agent).id)
+        expect(Agent).to receive(:async_receive).with(agents(:bob_rain_notifier_agent).id, anything).once
+        expect(Agent).not_to receive(:async_receive).with(agents(:jane_rain_notifier_agent).id, anything)
+
+        users(:bob).agents.receive!
       end
 
       it "should not propagate to disabled Agents" do
@@ -459,7 +548,7 @@ describe Agent do
     end
 
     describe "creating agents with propagate_immediately = true" do
-      it "should schedule subagent events immediately" do
+      it "schedules subagent events after the event transaction commits" do
         Event.delete_all
         sender = Agents::SomethingSource.new(name: "Sending Agent")
         sender.user = users(:bob)
@@ -473,10 +562,23 @@ describe Agent do
         receiver.sources << sender
         receiver.save!
 
-        sender.create_event payload: { "message" => "new payload" }
+        Agent.transaction do
+          sender.create_event payload: { "message" => "new payload" }
+          expect(receiver.events.count).to eq(0)
+        end
+
         expect(sender.events.count).to eq(1)
         expect(receiver.events.count).to eq(1)
         # should be true without calling Agent.receive!
+      end
+
+      it "does not scan for propagation without immediate receivers" do
+        sender = Agents::SomethingSource.new(name: "Sending Agent")
+        sender.user = users(:bob)
+        sender.save!
+
+        expect(Agent).not_to receive(:with_advisory_lock!)
+        sender.create_event payload: { "message" => "new payload" }
       end
 
       it "should only schedule receiving agents that are set to propagate_immediately" do
@@ -514,6 +616,29 @@ describe Agent do
     end
 
     describe "validations" do
+      it "allows Services owned by the Agent's user" do
+        agent = agents(:bob_website_agent)
+        agent.service = services(:generic)
+
+        expect(agent).to have(0).errors_on(:service)
+      end
+
+      it "allows global Services owned by another user" do
+        agent = agents(:bob_website_agent)
+        agent.service = services(:global)
+
+        expect(agent).to have(0).errors_on(:service)
+      end
+
+      it "rejects private Services owned by another user" do
+        agent = agents(:bob_website_agent)
+        service = services(:global)
+        service.global = false
+        agent.service = service
+
+        expect(agent).to have(1).error_on(:service)
+      end
+
       it "calls validate_options" do
         agent = Agents::SomethingSource.new(name: "something")
         agent.user = users(:bob)
@@ -580,6 +705,27 @@ describe Agent do
         expect(agent.options["hi"]).to eq(2)
         expect(agent).to have(1).errors_on(:options)
         expect(agent.errors_on(:options)).to include("cannot be set to an instance of #{2.class}") # Integer (ruby >=2.4) or Fixnum (ruby <2.4)
+      end
+
+      it "returns options with indifferent access after reload" do
+        agent = agents(:bob_weather_agent)
+
+        agent.options["hi"] = 2
+        agent.save!
+
+        expect(agent.reload.options).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(agent.options[:hi]).to eq(2)
+        expect(agent.options["hi"]).to eq(2)
+      end
+
+      it "returns memory with indifferent access after reload" do
+        agent = agents(:bob_weather_agent)
+
+        agent.update!(memory: { "hi" => 2 })
+
+        expect(agent.reload.memory).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(agent.memory[:hi]).to eq(2)
+        expect(agent.memory["hi"]).to eq(2)
       end
 
       it "should not allow source agents owned by other people" do

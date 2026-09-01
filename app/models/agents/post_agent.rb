@@ -73,7 +73,7 @@ module Agents
     def default_options
       {
         'post_url' => "http://www.example.com",
-        'expected_receive_period_in_days' => '1',
+        'expected_receive_period_in_days' => 1,
         'content_type' => 'form',
         'method' => 'post',
         'payload' => {
@@ -81,10 +81,11 @@ module Agents
           'something' => 'the event contained {{ somekey }}'
         },
         'headers' => {},
-        'emit_events' => 'false',
-        'parse_body' => 'true',
-        'no_merge' => 'true',
-        'output_mode' => 'clean'
+        'emit_events' => false,
+        'parse_body' => true,
+        'no_merge' => true,
+        'output_mode' => 'clean',
+        'require_signed_file_pointer' => true
       }
     end
 
@@ -136,22 +137,24 @@ module Agents
         errors.add(:base, "method must be 'post', 'get', 'put', 'delete', or 'patch'")
       end
 
-      if options['no_merge'].present? && !%(true false).include?(options['no_merge'].to_s)
-        errors.add(:base, "if provided, no_merge must be 'true' or 'false'")
+      if option_provided?(options['no_merge']) && boolify(options['no_merge']).nil? && !options['no_merge'].to_s.include?('{')
+        errors.add(:base, "if provided, no_merge must be a boolean value")
       end
 
       if options['output_mode'].present? && !options['output_mode'].to_s.include?('{') && !%(clean merge).include?(options['output_mode'].to_s)
         errors.add(:base, "if provided, output_mode must be 'clean' or 'merge'")
       end
 
-      if options['parse_body'].present? && !/\A(?:true|false)\z|\{/.match?(options['parse_body'].to_s)
-        errors.add(:base, "if provided, parse_body must be 'true' or 'false'")
+      if option_provided?(options['parse_body']) && boolify(options['parse_body']).nil? &&
+          !options['parse_body'].to_s.include?('{')
+        errors.add(:base, "if provided, parse_body must be a boolean value")
       end
 
       unless headers.is_a?(Hash)
         errors.add(:base, "if provided, headers must be a hash")
       end
 
+      validate_require_signed_file_pointer_options!
       validate_web_request_options!
     end
 
@@ -187,10 +190,11 @@ module Agents
         body = nil
       when 'post', 'put', 'patch'
         params = nil
+        upload_io = get_upload_io(event) if has_file_pointer?(event)
 
         content_type =
-          if has_file_pointer?(event)
-            data[interpolated(event.payload)['upload_key'].presence || 'file'] = get_upload_io(event)
+          if upload_io
+            data[interpolated(event.payload)['upload_key'].presence || 'file'] = upload_io
             nil
           else
             interpolated(event.payload)['content_type']

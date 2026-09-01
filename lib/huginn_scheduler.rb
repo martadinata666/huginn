@@ -61,7 +61,7 @@ class Rufus::Scheduler
         job.scheduler_agent_id = agent_id
 
         if scheduler_agent = job.scheduler_agent
-          scheduler_agent.control!
+          Agent.with_execution_lock(scheduler_agent.id) { |agent| agent.control! }
         else
           puts "Unscheduling SchedulerAgent##{job.scheduler_agent_id} (disabled or deleted)"
           job.unschedule
@@ -163,8 +163,11 @@ class HuginnScheduler < LongRunnable::Worker
 
   def run_schedule(time)
     with_mutex do
-      puts "Queuing schedule for #{time}"
-      AgentRunScheduleJob.perform_later(time)
+      if AgentRunScheduleJob.perform_later(time)
+        puts "Queued schedule for #{time}"
+      else
+        puts "Skipped schedule for #{time} (already queued)"
+      end
     end
   end
 

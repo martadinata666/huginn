@@ -1,5 +1,34 @@
 (function () {
-  let formatAgentForSelect = undefined;
+  const matchAgent = (params, data) => {
+    const optionIndex = data.element?.index ?? Number.MAX_SAFE_INTEGER;
+    const term = params.term?.trim();
+    if (!term) return { ...data, sortKey: [optionIndex] };
+
+    const upperTerm = term.toUpperCase();
+    const namePosition = data.text.toUpperCase().indexOf(upperTerm);
+    if (namePosition >= 0) {
+      return { ...data, sortKey: [1, namePosition, optionIndex] };
+    }
+
+    const descriptionPosition = (data.title || "")
+      .toUpperCase()
+      .indexOf(upperTerm);
+    if (descriptionPosition >= 0) {
+      return { ...data, sortKey: [2, descriptionPosition, optionIndex] };
+    }
+
+    return null;
+  };
+
+  const sortAgents = (agents) =>
+    agents.sort((left, right) => {
+      for (let index = 0; index < left.sortKey.length; index += 1) {
+        const difference = left.sortKey[index] - right.sortKey[index];
+        if (difference !== 0) return difference;
+      }
+      return 0;
+    });
+
   const Cls = (this.AgentEditPage = class AgentEditPage {
     constructor() {
       this.invokeDryRun = this.invokeDryRun.bind(this);
@@ -73,21 +102,14 @@
             if (!agent.element || !agent.title) return agent.text;
 
             return [
-              ...$(document.createElement('strong')).text(agent.text),
-              document.createElement('br'),
+              ...$(document.createElement("strong")).text(agent.text),
+              document.createElement("br"),
               ...$.parseHTML(agent.title),
             ];
           },
-          matcher: (params, data) => {
-            const term = params.term;
-            if (term == null) return data;
-            const upperTerm = term.toUpperCase();
-            return data.text.toUpperCase().indexOf(upperTerm) >= 0 ||
-              data.title.toUpperCase().indexOf(upperTerm) >= 0
-              ? data
-              : null;
-          },
-        });
+          matcher: matchAgent,
+          sorter: sortAgents,
+        }).select2("open");
       } else {
         this.enableDryRunButton();
         this.buildAce();
@@ -103,6 +125,7 @@
         return $(".description").hide();
       } else {
         $(".agent-settings").show();
+        $("form.agent-form").addClass("type-changing");
         $("#agent-spinner").fadeIn();
         if (!firstTime) {
           $(".model-errors").hide();
@@ -155,6 +178,7 @@
 
           window.initializeFormCompletable();
 
+          $("form.agent-form").removeClass("type-changing");
           return $("#agent-spinner").stop(true, true).fadeOut();
         });
       }
@@ -289,20 +313,13 @@
               editor.setTheme("ace/theme/" + theme);
             }
 
-            if ((mode = $("[name='agent[options][language]']").val())) {
-              switch (mode) {
-                case "JavaScript":
-                  return session.setMode("ace/mode/javascript");
-                case "CoffeeScript":
-                  return session.setMode("ace/mode/coffee");
-                default:
-                  return session.setMode("ace/mode/" + mode);
-              }
-            }
           };
 
-          $("[name='agent[options][language]']").on("change", setSyntax);
           setSyntax();
+
+          session.on("change", function () {
+            $source.val(session.getValue());
+          });
 
           return session.setValue($source.val());
         }
