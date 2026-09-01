@@ -48,6 +48,17 @@ Simple startup using docker compose (you need to daemonize with `-d` to persist 
     cd docker/single-process
     docker-compose up
 
+If you already have a MySQL 5.7 data volume, cleanly shut it down before the first MySQL 8.0 start:
+
+    cd docker/single-process
+    docker-compose stop web threaded
+    docker-compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SET GLOBAL innodb_fast_shutdown = 0"'
+    docker-compose stop mysql
+    docker-compose pull mysql mysqldata
+    docker-compose up -d
+
+Run this while the old MySQL 5.7 container is still available.  The MySQL 8.0 Docker image automatically performs the data dictionary upgrade when it starts with the existing data volume.
+
 or if you like to use PostgreSQL:
 
     docker-compose -f postgresql.yml up

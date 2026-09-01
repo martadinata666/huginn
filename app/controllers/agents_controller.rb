@@ -7,6 +7,8 @@ class AgentsController < ApplicationController
     set_table_sort sorts: %w[name created_at last_check_at last_event_at last_receive_at], default: { created_at: :desc }
 
     @agents = current_user.agents.preload(:scenarios, :controllers).reorder(table_sort).page(params[:page])
+    @service = current_user.services.find(params[:service_id]) if params[:service_id].present?
+    @agents = @agents.where(service: @service) if @service
 
     if show_only_enabled_agents?
       @agents = @agents.where(disabled: false)
@@ -31,7 +33,10 @@ class AgentsController < ApplicationController
   def handle_details_post
     @agent = current_user.agents.find(params[:id])
     if @agent.respond_to?(:handle_details_post)
-      render :json => @agent.handle_details_post(params) || {}
+      result = Agent.with_execution_lock(@agent.id) { |agent|
+        agent.handle_details_post(params)
+      } || {}
+      render json: result
     else
       @agent.error "#handle_details_post called on an instance of #{@agent.class} that does not define it."
       head 500
@@ -100,7 +105,7 @@ class AgentsController < ApplicationController
   def propagate
     respond_to do |format|
       if AgentPropagateJob.can_enqueue?
-        details = Agent.receive! # Eventually this should probably be scoped to the current_user.
+        details = current_user.agents.receive!
         format.html { redirect_back "Queued propagation calls for #{details[:event_count]} event(s) on #{details[:agent_count]} agent(s)" }
         format.json { head :ok }
       else

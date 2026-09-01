@@ -2,6 +2,47 @@
 
 | DateOfChange   | Changes                                                                                                      |
 |----------------|--------------------------------------------------------------------------------------------------------------|
+| Aug 26, 2026   | Move HumanTaskAgent to the optional [huginn_human_task_agent](https://github.com/huginn/huginn_human_task_agent) gem, removing the unmaintained `rturk` and Erector dependencies from core. [#3727](https://github.com/huginn/huginn/pull/3727) |
+| Aug 26, 2026   | Restrict manual event propagation to the current user's Agents and serialize propagation scans to prevent duplicate event delivery. [#3725](https://github.com/huginn/huginn/pull/3725) [#3726](https://github.com/huginn/huginn/pull/3726) |
+| Aug 25, 2026   | Serialize concurrent execution of the same Agent across jobs, web requests, schedules, and runners. [#3724](https://github.com/huginn/huginn/pull/3724) |
+| Aug 13, 2026   | Deduplicate queued periodic Agent runs to prevent jobs from piling up when workers are overloaded. [#3715](https://github.com/huginn/huginn/pull/3715) |
+| Jul 29, 2026   | Improve Agent navigation search by matching Agent types and showing them in suggestions. [#3705](https://github.com/huginn/huginn/pull/3705) |
+| Jul 29, 2026   | Raise MySQL `sort_buffer_size` for migrations involving native JSON columns. [#3704](https://github.com/huginn/huginn/pull/3704) |
+| Jul 28, 2026   | Fix duplicate events in RaindropBookmarksAgent. [#3703](https://github.com/huginn/huginn/pull/3703) |
+| Jul 27, 2026   | Improve Agent type picker search and show Agent descriptions in the results. [#3702](https://github.com/huginn/huginn/pull/3702) |
+| Jun 20, 2026   | Prevent JavaScriptAgent code edits from occasionally being lost when saving. |
+| Jun 12, 2026   | Sign file pointers emitted by file-handling agents and optionally reject unsigned pointers when consuming them.  New file-consuming agents require signed pointers by default. [#3669](https://github.com/huginn/huginn/pull/3669) |
+| Jun 09, 2026   | Refresh Threads access tokens automatically before they expire. [#3667](https://github.com/huginn/huginn/pull/3667) |
+| Jun 09, 2026   | Add Raindrop service and agents for watching and publishing bookmarks. [#3668](https://github.com/huginn/huginn/pull/3668) |
+| May 24, 2026   | Improve the JSON editor with content-aware sizing, vertical resizing, and fullscreen mode. [#3641](https://github.com/huginn/huginn/issues/3641) |
+| May 23, 2026   | Remove the obsolete AdiosoAgent. [#3662](https://github.com/huginn/huginn/pull/3662) |
+| May 16, 2026   | Upgrade the Docker Compose development database to MySQL 8.0. |
+| May 10, 2026   | Add `Agent.fetch`, `Agent.fetchAll`, `URL`, and `URLSearchParams` to JavaScriptAgent. [#3626](https://github.com/huginn/huginn/pull/3626) |
+| May 02, 2026   | Upgrade Ruby to 4.0. [#3638](https://github.com/huginn/huginn/pull/3638) |
+| Apr 13, 2026   | Optionally use native JSON columns for serialized fields on MySQL and PostgreSQL, controlled by the `NATIVE_JSON_COLUMNS` environment variable. [#3612](https://github.com/huginn/huginn/pull/3612) |
+| Apr 10, 2026   | Upgrade MySQL to 8.0 in the amd64 multi-process Docker image. [#3591](https://github.com/huginn/huginn/pull/3591) |
+| Apr 04, 2026   | Rework Tumblr agents by replacing obsolete gems. [#3617](https://github.com/huginn/huginn/pull/3617) |
+| Apr 04, 2026   | Switch TwitterStreamAgent from the unmaintained `twitter-stream` gem to `twitter`, removing the EventMachine dependency. [#3616](https://github.com/huginn/huginn/pull/3616) |
+| Apr 01, 2026   | Replace the JSON editor with vanilla-jsoneditor.  Agent option values now support typed JSON (numbers, booleans, arrays, objects) in addition to strings. [#3609](https://github.com/huginn/huginn/pull/3609) |
+| Mar 31, 2026   | Add Threads service and agents (ThreadsPublishAgent and ThreadsStreamAgent). [#3605](https://github.com/huginn/huginn/pull/3605) |
+| Mar 31, 2026   | Add service reauthorization flow and improve Services UI. [#3606](https://github.com/huginn/huginn/pull/3606) [#3607](https://github.com/huginn/huginn/pull/3607) |
+| Mar 29, 2026   | Remove CoffeeScript support from JavaScriptAgent.  Existing CoffeeScript agents are automatically migrated to JavaScript. [#3595](https://github.com/huginn/huginn/pull/3595) |
+| Mar 29, 2026   | Refresh Dropbox and Weibo integrations. [#3594](https://github.com/huginn/huginn/pull/3594) |
+| Mar 21, 2026   | CoffeeScript support in JavaScriptAgent is now optional.  The `coffee-script` gem is still included by default but will be removed in a future release. [#3584](https://github.com/huginn/huginn/pull/3584) |
+| Mar 20, 2026   | Add OpenAI ChatCompletion and Image agents for interacting with OpenAI-compatible APIs. [#3560](https://github.com/huginn/huginn/pull/3560) |
+| Mar 20, 2026   | Upgrade Liquid to 5.12. [#3583](https://github.com/huginn/huginn/pull/3583) |
+| Mar 19, 2026   | Replace deprecated `google-api-client` with `google-apis-calendar_v3` in GoogleCalendarPublishAgent. [#3579](https://github.com/huginn/huginn/pull/3579) |
+| Mar 19, 2026   | Add multi-arch (amd64 + arm64) Docker build. [#3577](https://github.com/huginn/huginn/pull/3577) |
+| Mar 19, 2026   | Upgrade Font Awesome to 7. [#3578](https://github.com/huginn/huginn/pull/3578) |
+| Mar 18, 2026   | Fix SMTP TLS configuration for net-smtp 0.5+. [#3576](https://github.com/huginn/huginn/pull/3576) |
+| Mar 15, 2026   | Replace Unicorn with single-threaded Puma. [#3573](https://github.com/huginn/huginn/pull/3573) |
+| Mar 08, 2026   | Upgrade to Ruby 3.4 and Rails 8.1.  Enable YJIT and Bootsnap precompile in production. [#3567](https://github.com/huginn/huginn/pull/3567) [#3569](https://github.com/huginn/huginn/pull/3569) |
+| Mar 08, 2026   | Replace HyPDF with pdf-reader in PdfInfoAgent. [#3564](https://github.com/huginn/huginn/pull/3564) |
+| Mar 23, 2025   | Fix default scenario iTunes URL. [#3492](https://github.com/huginn/huginn/pull/3492) |
+| Jan 14, 2025   | Fix missing Rails timezone identifiers. [#3485](https://github.com/huginn/huginn/pull/3485) |
+| Dec 31, 2024   | Fix race condition in DelayAgent. [#3478](https://github.com/huginn/huginn/pull/3478) |
+| Nov 19, 2024   | Allow the GET method for OmniAuth. [#3469](https://github.com/huginn/huginn/pull/3469) |
+| Nov 19, 2024   | Conditionally enable faraday-gzip depending on the Faraday backend. [#3468](https://github.com/huginn/huginn/pull/3468) |
 | Nov 17, 2024   | Enhance GoogleTranslationAgent by adding support for "merge" mode and translation of any nested object with a single call of Cloud Translation API. [#3466](https://github.com/huginn/huginn/pull/3466) |
 | Nov 04, 2024   | Restore usability the Agent type picker and Scenario icon picker partially broken for a long time.<br>Update Font-Awesome icons to version 6. [#3459](https://github.com/huginn/huginn/pull/3459) |
 | Oct 27, 2024   | WebsiteAgent can output raw XPath values by enabling the `raw` option, effectively obsoleting the `array` option which is now called `single_array`. [#3457](https://github.com/huginn/huginn/pull/3457) |

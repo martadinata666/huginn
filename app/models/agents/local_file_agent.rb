@@ -63,15 +63,15 @@ module Agents
     def default_options
       {
         'mode' => 'read',
-        'watch' => 'true',
-        'append' => 'false',
+        'watch' => true,
+        'append' => false,
         'path' => "",
         'data' => '{{ data }}'
       }
     end
 
     form_configurable :mode, type: :array, values: %w[read write]
-    form_configurable :watch, type: :array, values: %w[true false]
+    form_configurable :watch, type: :boolean
     form_configurable :path, type: :string
     form_configurable :append, type: :boolean
     form_configurable :data, type: :string
@@ -80,10 +80,10 @@ module Agents
       if options['mode'].blank? || !['read', 'write'].include?(options['mode'])
         errors.add(:base, "The 'mode' option is required and must be set to 'read' or 'write'")
       end
-      if options['watch'].blank? || ![true, false].include?(boolify(options['watch']))
+      if !option_provided?(options['watch']) || ![true, false].include?(boolify(options['watch']))
         errors.add(:base, "The 'watch' option is required and must be set to 'true' or 'false'")
       end
-      if options['append'].blank? || ![true, false].include?(boolify(options['append']))
+      if !option_provided?(options['append']) || ![true, false].include?(boolify(options['append']))
         errors.add(:base, "The 'append' option is required and must be set to 'true' or 'false'")
       end
       if options['path'].blank?
@@ -175,12 +175,14 @@ module Agents
 
       def callback(*changes)
         AgentRunner.with_connection do
-          changes.zip([:modified, :added, :removed]).each do |files, event_type|
-            files.each do |file|
-              agent.create_event payload: agent.get_file_pointer(file).merge(event_type:)
+          Agent.with_execution_lock(agent.id) do |locked_agent|
+            changes.zip([:modified, :added, :removed]).each do |files, event_type|
+              files.each do |file|
+                locked_agent.create_event payload: locked_agent.get_file_pointer(file).merge(event_type:)
+              end
             end
+            locked_agent.touch(:last_check_at)
           end
-          agent.touch(:last_check_at)
         end
       end
 

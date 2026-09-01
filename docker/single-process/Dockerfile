@@ -1,4 +1,4 @@
-FROM rubylang/ruby:3.2-jammy
+FROM rubylang/ruby:4.0.6-jammy
 
 COPY docker/scripts/prepare /scripts/
 RUN /scripts/prepare
@@ -32,9 +32,9 @@ RUN APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle instal
 
 COPY --chown="$UID:0" ./ /app/
 
-ARG OUTDATED_DOCKER_REGISTRY=false
-ENV OUTDATED_DOCKER_REGISTRY=${OUTDATED_DOCKER_REGISTRY}
+RUN npm install --production
 
+RUN APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec bootsnap precompile --gemfile app/ lib/ config/
 RUN APP_SECRET_TOKEN=secret DATABASE_ADAPTER=mysql2 ON_HEROKU=true bundle exec rake assets:clean assets:precompile
 
 EXPOSE 3000

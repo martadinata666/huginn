@@ -15,13 +15,13 @@ Huginn is a system for building agents that perform automated tasks for you onli
 * Watch for air travel or shopping deals
 * Follow your project names on Twitter and get updates when people mention them
 * Scrape websites and receive email when they change
-* Connect to Adioso, HipChat, FTP, IMAP, Jabber, JIRA, MQTT, nextbus, Pushbullet, Pushover, RSS, Bash, Slack, StubHub, translation APIs, Twilio, Twitter, and Weibo, to name a few.
+* Connect to HipChat, FTP, IMAP, Jabber, JIRA, MQTT, nextbus, Pushbullet, Pushover, RSS, Bash, Slack, StubHub, translation APIs, Twilio, Twitter, and Weibo, to name a few.
 * Send digest email with things that you care about at specific times during the day
 * Track counts of high frequency events and send an SMS within moments when they spike, such as the term "san francisco emergency"
 * Send and receive WebHooks
-* Run custom JavaScript or CoffeeScript functions
+* Run custom JavaScript functions
 * Track your location over time
-* Create Amazon Mechanical Turk workflows as the inputs, or outputs, of agents (the Amazon Turk Agent is called the "HumanTaskAgent"). For example: "Once a day, ask 5 people for a funny cat photo; send the results to 5 more people to be rated; send the top-rated photo to 5 people for a funny caption; send to 5 final people to rate for funniest caption; finally, post the best captioned photo on my blog."
+* Create Amazon Mechanical Turk workflows with the external [HumanTaskAgent](https://github.com/huginn/huginn_human_task_agent). For example: "Once a day, ask 5 people for a funny cat photo; send the results to 5 more people to be rated; send the top-rated photo to 5 people for a funny caption; send to 5 final people to rate for funniest caption; finally, post the best captioned photo on my blog."
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/huginn/huginn?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Changelog #199](https://img.shields.io/badge/changelog-%23199-lightgrey.svg)](https://changelog.com/podcast/199)
 
@@ -83,9 +83,8 @@ If you need more detailed instructions, see the [Novice setup guide][novice-setu
 
 All agents have specs! And there's also acceptance tests that simulate running Huginn in a headless browser.
 
-* Install PhantomJS 2.1.1 or greater:
-  * Using [Node Package Manager](https://www.npmjs.com/): `npm install phantomjs`
-  * Using [Homebrew](http://brew.sh/) on OSX `brew install phantomjs`
+* Install Google Chrome and ChromeDriver for local feature specs
+* Or use the Docker-based test environment in [`docker/test/README.md`](docker/test/README.md)
 * Run all specs with `bundle exec rspec`
 * Run a specific spec with `bundle exec rspec path/to/specific/test_spec.rb`.
 * Read more about rspec for rails [here](https://github.com/rspec/rspec-rails).
@@ -150,4 +149,4 @@ Huginn is provided under the MIT License.
 
 Huginn was originally created by [@cantino](https://github.com/cantino) in 2013. Since then, many people's dedicated contributions have made it what it is today.
 
-[![Build Status](https://travis-ci.org/huginn/huginn.svg)](https://travis-ci.org/huginn/huginn) [![Coverage Status](https://coveralls.io/repos/huginn/huginn/badge.svg)](https://coveralls.io/r/huginn/huginn) [![Dependency Status](https://gemnasium.com/huginn/huginn.svg)](https://gemnasium.com/huginn/huginn)
+[![CI](https://github.com/huginn/huginn/actions/workflows/ci.yml/badge.svg)](https://github.com/huginn/huginn/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/huginn/huginn/badge.svg)](https://coveralls.io/r/huginn/huginn)

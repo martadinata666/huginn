@@ -1,8 +1,14 @@
-require 'utils'
+# frozen_string_literal: true
 
+require 'utils'
+require Rails.root.join("lib/omniauth/strategies/tumblr").to_s
+require Rails.root.join("lib/omniauth/strategies/threads").to_s
+require Rails.root.join("lib/omniauth/strategies/raindrop").to_s
 # Use this hook to configure devise mailer, warden hooks and so forth.
 # Many of these configuration options can be set straight in your model.
 Devise.setup do |config|
+  config.secret_key = Rails.application.secret_key_base if Rails.application.secret_key_base.present?
+
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer,
   # note that it will be overwritten if you use your own mailer class
@@ -247,10 +253,24 @@ Devise.setup do |config|
     config.omniauth :'tumblr', key, secret
   end
 
-  if defined?(OmniAuth::Strategies::DropboxOauth2) &&
+  if defined?(OmniAuth::Strategies::Dropbox) &&
      (key = ENV["DROPBOX_OAUTH_KEY"]).present? &&
      (secret = ENV["DROPBOX_OAUTH_SECRET"]).present?
-    config.omniauth :dropbox, key, secret, strategy_class: OmniAuth::Strategies::DropboxOauth2, request_path: '/auth/dropbox', callback_path: '/auth/dropbox/callback'
+    options = {
+      name: :dropbox,
+      scope: %w[
+        account_info.read
+        files.metadata.read
+        files.content.read
+        sharing.read
+        sharing.write
+      ].join(" ")
+    }
+    if (domain = ENV["DOMAIN"]).present?
+      scheme = ENV["FORCE_SSL"] == "true" ? "https" : "http"
+      options[:callback_url] = "#{scheme}://#{domain}/auth/dropbox/callback"
+    end
+    config.omniauth :dropbox, key, secret, options
   end
 
   if defined?(OmniAuth::Strategies::Evernote) &&
@@ -279,6 +299,18 @@ Devise.setup do |config|
     }
   end
 
+  if defined?(OmniAuth::Strategies::Threads) &&
+     (key = ENV["THREADS_APP_ID"]).present? &&
+     (secret = ENV["THREADS_APP_SECRET"]).present?
+    config.omniauth :threads, key, secret, scope: "threads_basic,threads_content_publish"
+  end
+
+  if defined?(OmniAuth::Strategies::Raindrop) &&
+     (key = ENV["RAINDROP_CLIENT_ID"]).present? &&
+     (secret = ENV["RAINDROP_CLIENT_SECRET"]).present?
+    config.omniauth :raindrop, key, secret
+  end
+
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or
   # change the failure app, you can configure them inside the config.warden block.
@@ -305,4 +337,8 @@ Devise.setup do |config|
 
   OmniAuth.config.logger = Rails.logger
   OmniAuth.config.allowed_request_methods = [:post, :get]
+  OmniAuth.config.on_failure = proc do |env|
+    env["devise.mapping"] = Devise.mappings[:user]
+    OmniauthCallbacksController.action(:failure).call(env)
+  end
 end

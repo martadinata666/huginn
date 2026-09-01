@@ -104,6 +104,17 @@ The `docker/multi-process` folder also has a `docker-compose.yml` that allows fo
     cd docker/multi-process
     docker-compose up
 
+If you already have a MySQL 5.7 data volume, cleanly shut it down before the first MySQL 8.0 start:
+
+    cd docker/multi-process
+    docker-compose stop web
+    docker-compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SET GLOBAL innodb_fast_shutdown = 0"'
+    docker-compose stop mysql
+    docker-compose pull mysql mysqldata
+    docker-compose up -d
+
+Run this while the old MySQL 5.7 container is still available.  The MySQL 8.0 Docker image automatically performs the data dictionary upgrade when it starts with the existing data volume.
+
 ## Environment Variables
 
 Other Huginn [12factored](https://12factor.net/) environment variables of note are generated and put into the .env file as per Huginn documentation. All variables of the [.env.example](https://github.com/huginn/huginn/blob/master/.env.example) can be used to override the defaults which a read from the current `.env.example`.

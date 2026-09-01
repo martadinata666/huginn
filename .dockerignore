@@ -11,8 +11,8 @@ db/*.sqlite3
 public/system/*
 coverage
 spec/tmp/*
+node_modules
 .travis.yml
-build_docker_image.sh
 
 # Copied from .gitignore
 *.rbc
@@ -34,5 +34,4 @@ deployment/cookbooks
 .ruby-gemset
 .ruby-version
 manifest.yml
-config/unicorn.rb
 db/schema.rb

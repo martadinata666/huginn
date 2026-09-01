@@ -21,6 +21,7 @@ describe Service do
 
       service = agent.service
       service.toggle_availability!
+      jane_agent.update!(service: service)
       expect(service.agents.length).to eq(2)
 
       service.toggle_availability!
@@ -57,6 +58,19 @@ describe Service do
       expect(@service.prepare_request).to eq(nil)
     end
 
+    it "should not update a Threads token outside the refresh window" do
+      @service.provider = "threads"
+      @service.expires_at = Time.current + Service::THREADS_REFRESH_WINDOW + 1.day
+      expect(@service.prepare_request).to eq(nil)
+    end
+
+    it "should update a Threads token inside the refresh window" do
+      allow(@service).to receive(:refresh_token!) { @service }
+      @service.provider = "threads"
+      @service.expires_at = Time.current + Service::THREADS_REFRESH_WINDOW - 1.day
+      expect(@service.prepare_request).to eq(@service)
+    end
+
     it "should call refresh_token! if the token expired" do
       allow(@service).to receive(:refresh_token!) { @service }
       @service.expires_at = Time.now - 1.hour
@@ -75,12 +89,98 @@ describe Service do
     end
 
     it "should update the token" do
-      stub_request(:post, "https://oauth2.googleapis.com/token?client_id=googleclientid&client_secret=googleclientsecret&grant_type=refresh_token&refresh_token=refreshtokentest").
-        to_return(:status => 200, :body => '{"expires_in":1209600,"access_token": "NEWTOKEN"}', :headers => {})
+      stub_request(:post, "https://oauth2.googleapis.com/token")
+        .with(body: {
+          "client_id" => "googleclientid",
+          "client_secret" => "googleclientsecret",
+          "grant_type" => "refresh_token",
+          "refresh_token" => "refreshtokentest"
+        }).
+        to_return(:status => 200, :body => '{"expires_in":1209600,"access_token": "NEWTOKEN"}',
+                  :headers => { "Content-Type" => "application/json" })
       @service.provider = 'google'
       @service.refresh_token = 'refreshtokentest'
       @service.refresh_token!
       expect(@service.token).to eq('NEWTOKEN')
+    end
+
+    it "should refresh a Threads long-lived token" do
+      stub_request(:get, "https://graph.threads.net/refresh_access_token")
+        .with(query: {
+          "grant_type" => "th_refresh_token",
+          "access_token" => "old-long-lived-token"
+        })
+        .to_return(
+          status: 200,
+          body: {
+            access_token: "new-long-lived-token",
+            token_type: "bearer",
+            expires_in: 5_183_944
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      @service.provider = "threads"
+      @service.token = "old-long-lived-token"
+      @service.refresh_token!
+
+      expect(@service.token).to eq("new-long-lived-token")
+      expect(@service.expires_at).to be > Time.current
+    end
+
+    it "should refresh a Raindrop token with a JSON request" do
+      stub_request(:post, "https://api.raindrop.io/v1/oauth/access_token")
+        .with(
+          body: hash_including({
+            client_id: "raindropclientid",
+            client_secret: "raindropclientsecret",
+            grant_type: "refresh_token",
+            refresh_token: "raindrop-refresh-token",
+          }),
+          headers: { "Content-Type" => /application\/json/ }
+        )
+        .to_return(
+          status: 200,
+          body: {
+            expires_in: 1_209_599,
+            access_token: "new-raindrop-token",
+            refresh_token: "new-raindrop-refresh-token",
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      @service.provider = "raindrop"
+      @service.refresh_token = "raindrop-refresh-token"
+      @service.refresh_token!
+
+      expect(@service.token).to eq("new-raindrop-token")
+      expect(@service.refresh_token).to eq("new-raindrop-refresh-token")
+      expect(@service.expires_at).to be > Time.current
+    end
+
+    it "raises the provider error when refreshing a token fails" do
+      stub_request(:get, "https://graph.threads.net/refresh_access_token")
+        .with(query: {
+          "grant_type" => "th_refresh_token",
+          "access_token" => "expired-token"
+        })
+        .to_return(
+          status: 400,
+          body: {
+            error: {
+              message: "Session has expired",
+              type: "OAuthException"
+            }
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      @service.provider = "threads"
+      @service.token = "expired-token"
+
+      expect {
+        @service.refresh_token!
+      }.to raise_error(RuntimeError, "Unable to refresh threads access token: Session has expired")
     end
   end
 
@@ -110,6 +210,94 @@ describe Service do
       expect(service.name).to eq('dsander')
       expect(service.uid).to eq('12345')
       expect(service.token).to eq('agithubtoken')
+    end
+
+    it "should exchange a Threads token for a long-lived token" do
+      stub_request(:get, "https://graph.threads.net/access_token")
+        .with(query: {
+          "grant_type" => "th_exchange_token",
+          "client_secret" => "threadsappsecret",
+          "access_token" => "short-lived-threads-token"
+        })
+        .to_return(
+          status: 200,
+          body: {
+            access_token: "long-lived-threads-token",
+            token_type: "bearer",
+            expires_in: 5_183_944
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      threads = JSON.parse(File.read(Rails.root.join("spec/data_fixtures/services/threads.json")))
+
+      expect {
+        service = @user.services.initialize_or_update_via_omniauth(threads)
+        service.save!
+      }.to change { @user.services.count }.by(1)
+
+      service = @user.services.find_by!(provider: "threads", uid: "3141592653")
+      expect(service.provider).to eq("threads")
+      expect(service.name).to eq("threads-user")
+      expect(service.uid).to eq("3141592653")
+      expect(service.token).to eq("long-lived-threads-token")
+      expect(service.options[:user_id]).to eq("3141592653")
+      expect(service.options[:username]).to eq("threads-user")
+    end
+
+    it "should work with Raindrop services" do
+      raindrop = JSON.parse(File.read(Rails.root.join("spec/data_fixtures/services/raindrop.json")))
+
+      expect {
+        service = @user.services.initialize_or_update_via_omniauth(raindrop)
+        service.save!
+      }.to change { @user.services.count }.by(1)
+
+      service = @user.services.find_by!(provider: "raindrop", uid: "456")
+      expect(service.provider).to eq("raindrop")
+      expect(service.name).to eq("raindrop-user")
+      expect(service.uid).to eq("456")
+      expect(service.token).to eq("raindrop-access-token")
+      expect(service.refresh_token).to eq("raindrop-refresh-token")
+      expect(service.options[:user_id]).to eq(456)
+      expect(service.options[:email]).to eq("raindrop@example.com")
+    end
+
+    it "raises the provider error when exchanging a Threads token fails" do
+      stub_request(:get, "https://graph.threads.net/access_token")
+        .with(query: {
+          "grant_type" => "th_exchange_token",
+          "client_secret" => "threadsappsecret",
+          "access_token" => "short-lived-threads-token"
+        })
+        .to_return(
+          status: 400,
+          body: {
+            error: {
+              message: "Invalid OAuth 2.0 Access Token",
+              type: "OAuthException"
+            }
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      threads = JSON.parse(File.read(Rails.root.join("spec/data_fixtures/services/threads.json")))
+
+      expect {
+        @user.services.initialize_or_update_via_omniauth(threads)
+      }.to raise_error(RuntimeError, "Unable to exchange Threads access token: Invalid OAuth 2.0 Access Token")
+    end
+  end
+
+  describe "options serialization" do
+    it "returns options with indifferent access after reload" do
+      service = services(:generic)
+
+      service.update!(options: { "user_id" => "abc", "username" => "demo" })
+
+      expect(service.reload.options).to be_a(ActiveSupport::HashWithIndifferentAccess)
+      expect(service.options[:user_id]).to eq("abc")
+      expect(service.options["username"]).to eq("demo")
     end
   end
 
